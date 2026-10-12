@@ -42,11 +42,12 @@ const STATIC_STORE = (() => {
   };
   const para = (runs, after = 120, before = 0) => `<w:p><w:pPr><w:spacing w:before="${before}" w:after="${after}"/></w:pPr>${runs}</w:p>`;
   function buildDocx(title, infoLines, sections) {
-    const body = [para(run(title, { bold: true, size: 16 }), 200), ...infoLines.map((l) => para(run(l, { size: 10, color: '555555' }), 40))];
+    // 제목·구역 이름·질문이 비어 있으면 그 줄을 만들지 않는다(회상 채점용 파일은 답변만 담는다)
+    const body = [...(title ? [para(run(title, { bold: true, size: 16 }), 200)] : []), ...infoLines.map((l) => para(run(l, { size: 10, color: '555555' }), 40))];
     for (const s of sections) {
-      body.push(para(run(s.name, { bold: true, size: 13 }), 160, 360));
+      if (s.name) body.push(para(run(s.name, { bold: true, size: 13 }), 160, 360));
       s.items.forEach((it, n) => {
-        body.push(para(run(`${n + 1}. ${it.question}`, { bold: true, size: 11 }), 80, 200));
+        if (it.question) body.push(para(run(`${n + 1}. ${it.question}`, { bold: true, size: 11 }), 80, 200));
         const a = String(it.answer ?? '');
         (a.trim() ? a.split('\n') : ['(응답 없음)']).forEach((line) => body.push(para(run(line, { size: 11, color: a.trim() ? null : '999999' }), 40)));
       });
@@ -65,6 +66,7 @@ const STATIC_STORE = (() => {
     if (!payload.hide_cue) info.push(`cue 조건: ${cueKo[payload.cue_condition] || payload.cue_condition}`);
     info.push(...(payload.extra_info || []), `제출 시각: ${payload.submitted_iso}`, `세션: ${sessionId}`);
     const name = `${pid}_${payload.trial === 0 ? 'practice' : 'trial' + payload.trial}_${payload.text}${recall ? '_회상' : ''}.docx`;
+    if (recall) return { name, blob: buildDocx('', [], payload.sections) };  // 회상 채점용: 내용은 답변만
     return { name, blob: buildDocx(`${pid} · ${label} ${recall ? '자유 회상' : '답변'}`, info, payload.sections) };
   }
 

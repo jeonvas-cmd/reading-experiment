@@ -428,13 +428,13 @@ function wordPayload(rec) {
       { name: '설문 (7점)', items: (rec.survey?.items || []).map((x) => ({ question: x.question, answer: `${x.value} / 7  (1 = ${x.lo}, 7 = ${x.hi})` })) },
     ] };
 }
-// 자유 회상 채점용 Word: 회상 답변만 담고, cue 조건은 적지 않는다(눈가림 채점)
+// 자유 회상 채점용 Word: 내용은 회상 답변만(제목·정보·cue 조건 없음, 눈가림 채점). 참가자·Trial·글은 파일 이름에 있다.
 function recallPayload(rec) {
   const R = rec.recall || {};
   return { kind: 'recall', hide_cue: true, pid: S.pid, trial: rec.trial, text: rec.text, title: rec.title, cue_condition: rec.cue_condition,
     session_id: S.data.meta.session_id, submitted_iso: R.end?.iso || new Date().toISOString(),
     extra_info: [`글자 수: ${R.chars ?? 0} (공백 제외 ${R.chars_no_space ?? 0})`, `작성 시간: ${R.duration_ms == null ? '–' : fmtMs(R.duration_ms)}`],
-    sections: [{ name: '자유 회상 답변', items: [{ question: '앞서 읽었던 이야기의 내용을 기억나는 대로 재구성', answer: R.answer || '' }] }] };
+    sections: [{ name: '', items: [{ question: '', answer: R.answer || '' }] }] };  // 파일 이름에 정보가 있으므로 내용은 답변만
 }
 async function saveWord(rec) {
   const payload = wordPayload(rec), rpayload = recallPayload(rec);
