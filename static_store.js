@@ -78,14 +78,14 @@ const STATIC_STORE = (() => {
       const key = { participant: m.pid, sequence: m.sequence, trial: tr.trial, attempt: tr.attempt ?? 1, practice: tr.practice,
                     text: tr.text, cue_condition: tr.cue_condition, video_id: tr.video_id };
       const R = tr.reading_pre || {}, sents = (R.sentences || []).filter((s) => 'rt_ms' in s);
-      const Rc = tr.recall || null, T = tr.tf || {}, Vitems = (tr.survey || {}).items || [], I = tr.interruption || {}, C = tr.cue || null;
+      const Rc = tr.recall || null, T = tr.tf || {}, Vitems = ((tr.survey || {}).items || []).filter(Boolean), I = tr.interruption || {}, C = tr.cue || null;
       const resp = (o) => ({ ...key, task: null, position: null, item_id: null, question: null, response: null, answer_key: null,
                              correct: null, rt_ms: null, input: null, extra: null, ...o });
       if (C) responses.push(resp({ task: 'cue', item_id: 'cue', question: `cue ${(C.items || []).length}개 읽기`, response: '넘김', rt_ms: C.duration_ms, input: C.input }));
       if (Rc) responses.push(resp({ task: '퀴즈1_회상', item_id: 'recall', question: '이야기 내용 재구성', response: Rc.answer, rt_ms: Rc.duration_ms,
                                     extra: `글자 수 ${Rc.chars} (공백 제외 ${Rc.chars_no_space})` }));
-      for (const it of T.items || []) responses.push(resp({ task: '퀴즈2_TF', position: it.position, item_id: it.qid, question: it.statement,
-        response: it.response, answer_key: it.answer_key, correct: it.correct ? 1 : 0, rt_ms: it.rt_ms, input: it.input,
+      for (const it of (T.items || []).filter(Boolean)) responses.push(resp({ task: '퀴즈2_TF', position: it.position, item_id: it.qid, question: it.statement,
+        response: it.response, answer_key: it.answer_key, correct: it.correct == null ? null : (it.correct ? 1 : 0), rt_ms: it.rt_ms, input: it.input,
         extra: `${it.level || ''} / cue 범주: ${it.cue_category || ''}` }));
       Vitems.forEach((it, i) => responses.push(resp({ task: '설문', position: i + 1, item_id: it.id, question: it.question, response: it.value,
         rt_ms: it.rt_ms, input: it.input, extra: `1 = ${it.lo}, 7 = ${it.hi}` })));
@@ -96,7 +96,7 @@ const STATIC_STORE = (() => {
         video_ended_by: I.ended_by, video_error: I.error, video_buffering_n: (I.events || []).filter((e) => e.state === 'buffering').length,
         cue_ms: C ? C.duration_ms : null, cue_n_items: C ? (C.items || []).length : null, cue_input: C ? C.input : null,
         recall_ms: Rc ? Rc.duration_ms : null, recall_chars: Rc ? Rc.chars : null,
-        tf_ms: T.duration_ms, tf_rt_total_ms: T.rt_total_ms, tf_rt_mean_ms: T.rt_mean_ms, tf_n: (T.items || []).length, tf_correct: T.n_correct,
+        tf_ms: T.duration_ms, tf_rt_total_ms: T.rt_total_ms, tf_rt_mean_ms: T.rt_mean_ms, tf_n: (T.items || []).filter(Boolean).length, tf_correct: T.n_correct, tf_skipped: T.n_skipped ?? 0,
         survey_ms: (tr.survey || {}).duration_ms, word_file: tr.word_file, started_iso: tr.start?.iso, ended_iso: tr.end?.iso,
         s1: V.s1 ?? null, s2: V.s2 ?? null, s3: V.s3 ?? null, s4: V.s4 ?? null, s5: V.s5 ?? null });
     }

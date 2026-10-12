@@ -83,21 +83,45 @@ async function sha12(text) {
   } catch (e) { return null; }
 }
 function panel(html) { app.innerHTML = `<section class="panel">${html}</section>`; return app.querySelector('.panel'); }
+
+// ---------- 실험자 단축키 (참가자에게는 안내하지 않음) ----------
+// Ctrl+Shift+← : 바로 앞 화면으로. 퀴즈 2 문항 → 이전 문항, 퀴즈 2 첫 화면 → 퀴즈 1, 퀴즈 1 → cue, 설문 문항 → 이전 문항, 설문 첫 문항 → 퀴즈 2 마지막 문항.
+//                읽기·영상·cue로는(그 앞으로는) 돌아가지 않는다(데이터가 오염되므로). 다시 받은 응답의 이전 값은 지우지 않고 redo에 보관한다.
+// Ctrl+Shift+→ : 지금 화면 건너뛰기. 안내 화면, 읽기의 남은 문장, 영상, cue, 퀴즈 1, 퀴즈 2·설문 문항. 건너뛴 사실은 기록(skipped)에 남는다.
+// 화면마다 CTL.handler(dir)를 등록하고, 처리했으면 true를 돌려준다.
+const CTL = { handler: null };
+function flash(msg) {
+  const d = document.createElement('div'); d.className = 'ctl-flash'; d.textContent = msg;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 1400);
+}
+addEventListener('keydown', (e) => {
+  if (!e.ctrlKey || !e.shiftKey || e.altKey || (e.code !== 'ArrowLeft' && e.code !== 'ArrowRight')) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  if (e.repeat) return;
+  const dir = e.code === 'ArrowLeft' ? 'back' : 'skip';
+  const ok = CTL.handler ? CTL.handler(dir) === true : false;
+  logEvent('experimenter_key', { dir, handled: ok, stage: S.data?.meta?.stage ?? null });
+  flash(ok ? (dir === 'back' ? '◀' : '▶') : '×');
+}, true);
+
 // 안내 화면: 버튼 클릭이나 Space로 넘어간다. 화면이 뜬 직후 250ms 동안의 Space와 꾹 누른 반복 입력은 무시해, 앞 화면에서 누른 Space로 건너뛰지 않게 한다.
-function waitClickOrSpace(btn) {
+// 실험자 건너뛰기는 버튼이 꺼져 있어도 넘어간다. allowBack이면 실험자 뒤로 가기로 'back'을 돌려준다.
+function waitClickOrSpace(btn, allowBack = false) {
   const t0 = performance.now();
   return new Promise((resolve) => {
+    const fin = (how) => { removeEventListener('keydown', onKey); CTL.handler = null; resolve(how); };
     const onKey = (e) => {
       if (e.code !== 'Space' || e.repeat || btn.disabled || performance.now() - t0 < 250) return;
-      removeEventListener('keydown', onKey); resolve('key');
+      fin('key');
     };
     addEventListener('keydown', onKey);
-    btn.addEventListener('click', () => { removeEventListener('keydown', onKey); resolve('click'); }, { once: true });
+    btn.addEventListener('click', () => fin('click'), { once: true });
+    CTL.handler = (dir) => { if (dir === 'skip') { fin('experimenter_skip'); return true; } if (dir === 'back' && allowBack) { fin('back'); return true; } return false; };
   });
 }
-async function message(title, lines, button = '다음') {
+async function message(title, lines, button = '다음', allowBack = false) {
   const p = panel(`<h2>${title}</h2>${lines.map((l) => `<p>${l}</p>`).join('')}<button type="button">${button}</button>`);
-  return waitClickOrSpace(p.querySelector('button'));
+  return waitClickOrSpace(p.querySelector('button'), allowBack);
 }
 // 서버 모드는 이 컴퓨터의 파일(/videos/), 서버 없는 모드는 원본 주소(config의 url, 국가유산채널 HTTPS)를 쓴다.
 const videoUrl = (v) => (S.STATIC && v.url) ? v.url : '/videos/' + encodeURIComponent(v.file);
@@ -206,18 +230,19 @@ function readSentences(list, rec, phase) {
       requestAnimationFrame(() => { cur.shown = stamp(); });
     };
     const finish = (at) => {
-      removeEventListener('keydown', onKey);
+      removeEventListener('keydown', onKey); CTL.handler = null;
       R.end = at; R.duration_ms = dur(R.start, at);
       resolve(R);
     };
+    const skipRest = (by) => {  // 남은 문장을 건너뛴 것으로 기록하고 끝낸다
+      const at = stamp();
+      for (; i < list.length; i++) R.sentences.push({ sid: list[i].sid, para: list[i].para, chars: list[i].text.length, skipped: true });
+      R.skipped_by = by; logEvent(`${by}_skip`, { phase });
+      finish(at);
+    };
     const onKey = (e) => {
       if (e.repeat) return;
-      if (DEBUG && e.key === ']') {  // 시험용: 이 구간을 건너뜀
-        const at = stamp();
-        for (; i < list.length; i++) R.sentences.push({ sid: list[i].sid, para: list[i].para, chars: list[i].text.length, skipped: true });
-        logEvent('debug_skip', { phase });
-        return finish(at);
-      }
+      if (DEBUG && e.key === ']') return skipRest('debug');  // 시험용
       if (e.code !== 'Space' || !cur || !cur.shown) return;
       const at = stamp();
       R.sentences.push({ sid: cur.s.sid, para: cur.s.para, event: cur.s.event ?? null, chars: cur.s.text.length,
@@ -229,13 +254,14 @@ function readSentences(list, rec, phase) {
       show();
     };
     addEventListener('keydown', onKey);
+    CTL.handler = (dir) => { if (dir !== 'skip') return false; skipRest('experimenter'); return true; };
     show();
   });
 }
 
 // ---------- 3. 중단 영상 (영상이 끝나면 넘어감) ----------
 // 로컬 영상 파일(config의 file)을 HTML5 video로 재생한다. 조작 막대가 없고 클릭으로 멈출 수 없다.
-// 연습에서는 '건너뛰기' 버튼을 보인다. 시험(debug)에서는 debug.interruption_sec 뒤에 끊고 ] 키로 건너뛸 수 있다.
+// 연습에서는 '건너뛰기' 버튼을 보인다. 시험(debug)에서는 debug.interruption_sec 뒤에 끊고 ] 키로 건너뛸 수 있다. 실험자는 Ctrl+Shift+→로 건너뛴다.
 async function interruption(rec, video, practice) {
   const I = { start: stamp(), end: null, duration_ms: null, video_id: rec.video_id, video_file: video?.file || null,
               video_duration: null, video_time_at_stop: null, ended_by: null, error: null, events: [] };
@@ -252,12 +278,13 @@ async function interruption(rec, video, practice) {
     const done = (by) => {
       if (finished) return; finished = true;
       I.ended_by = by; I.video_time_at_stop = vt();
-      clearTimeout(timer); removeEventListener('keydown', onKey);
+      clearTimeout(timer); removeEventListener('keydown', onKey); CTL.handler = null;
       v.pause(); v.removeAttribute('src'); v.load();
       resolve();
     };
     const onKey = (e) => { if (DEBUG && e.key === ']') { logEvent('debug_skip', { phase: 'interruption' }); done('debug_skip'); } };
     addEventListener('keydown', onKey);
+    CTL.handler = (dir) => { if (dir !== 'skip') return false; log('experimenter_skip', { video_time: vt() }); done('experimenter_skip'); return true; };
     if (practice) stage.querySelector('.skip-video').onclick = () => { log('skip_click', { video_time: vt() }); done('practice_skip'); };
     if (!video || !video.file) {
       I.error = '영상 파일이 지정되지 않음'; log('error', { message: I.error });
@@ -276,12 +303,14 @@ async function interruption(rec, video, practice) {
     });
     v.addEventListener('ended', () => { log('ended', { video_time: vt() }); done('ended'); });
     v.addEventListener('error', () => {
+      if (finished) return;
       I.error = `영상 재생 오류 (code ${v.error?.code})`; log('error', { message: I.error });
       stage.insertAdjacentHTML('beforeend', `<div class="alert">${esc(I.error)} — ${S.cfg.video_error_wait_sec}초 뒤 자동으로 넘어갑니다.</div>`);
       clearTimeout(timer); timer = setTimeout(() => done('error_timeout'), S.cfg.video_error_wait_sec * 1000);
     });
     v.src = videoUrl(video);
     v.play().catch((e) => {  // 브라우저가 소리 있는 자동 재생을 막으면 참가자가 직접 누를 버튼을 띄운다
+      if (finished) return;
       log('autoplay_blocked', { error: String(e) });
       fallback.classList.remove('hidden');
       fallback.querySelector('button').onclick = () => { log('fallback_click'); v.play().catch(() => {}); };
@@ -294,7 +323,9 @@ async function interruption(rec, video, practice) {
 }
 
 // ---------- 4. cue ----------
+// 실험자 뒤로 가기로 퀴즈 1에서 돌아오면 다시 보인다(이전 기록은 rec.cue_history에 보관).
 async function cueScreen(rec, items, minSec) {
+  if (rec.cue) (rec.cue_history ||= []).push(rec.cue);
   const C = { condition: rec.cue_condition, items, min_sec: minSec, start: stamp(), enabled: null, end: null, duration_ms: null };
   rec.cue = C;
   const p = panel(`<h2>${TXT.cueTitle}</h2><p class="hint">${TXT.cueHint}</p>
@@ -302,17 +333,20 @@ async function cueScreen(rec, items, minSec) {
     <button type="button" disabled>다음</button>`);
   save('cue');
   const b = p.querySelector('button');
-  setTimeout(() => { b.disabled = false; C.enabled = stamp(); }, minSec * 1000);
-  C.input = await waitClickOrSpace(b);  // 최소 시간이 지나 버튼이 켜진 뒤 클릭 또는 Space로 넘어감
+  const t = setTimeout(() => { b.disabled = false; C.enabled = stamp(); }, minSec * 1000);
+  C.input = await waitClickOrSpace(b);  // 최소 시간이 지나 버튼이 켜진 뒤 클릭 또는 Space로 넘어감 (실험자 건너뛰기는 언제나)
+  clearTimeout(t);
   C.end = stamp(); C.duration_ms = dur(C.start, C.end);
   return C;
 }
 
 // ---------- 5. 퀴즈 1: 자유 회상 (한 화면, 시간 제한 없음) ----------
-async function recallScreen(rec) {
-  const Q = S.qs.recall;
+// 돌아온 경우 이전에 쓴 글을 채워 두고, 이전 기록은 R.redo에 보관한다. 반환: 'back'(cue로) 또는 기록.
+async function recallScreen(rec, canBack) {
+  const Q = S.qs.recall, prev = rec.recall;
   const R = { start: stamp(), end: null, duration_ms: null, answer: null, chars: null, chars_no_space: null,
-              first_input_t: null, last_input_t: null, n_inputs: 0, submit_blocked: 0 };
+              first_input_t: null, last_input_t: null, n_inputs: 0, submit_blocked: 0, skipped: false,
+              redo: prev ? [...(prev.redo || []), { ...prev, redo: undefined }] : undefined };
   rec.recall = R;
   const p = panel(`<h2>${esc(Q.title)}</h2><div class="instr-box">${Q.instructions.map((l) => `<p class="instr">${esc(l)}</p>`).join('')}</div>
     <textarea id="recall" class="recall-box" spellcheck="false"></textarea>
@@ -320,22 +354,33 @@ async function recallScreen(rec) {
     <button type="button" id="submit">제출</button>`);
   save('recall');
   const ta = p.querySelector('#recall'), err = p.querySelector('#rerr'), submit = p.querySelector('#submit');
+  if (prev?.answer) ta.value = prev.answer;
   ta.addEventListener('input', () => { const t = stamp().t; R.n_inputs++; R.first_input_t ??= t; R.last_input_t = t; if (ta.value.trim()) ta.classList.remove('missing'); });
   setTimeout(() => ta.focus(), 200);  // 앞 화면에서 누른 키가 글 칸에 입력되지 않도록 잠깐 뒤에 커서를 둔다
-  for (;;) {  // 빈 답은 제출되지 않는다
-    await waitClick(submit);
-    if (ta.value.trim()) break;
-    R.submit_blocked++; ta.classList.add('missing'); err.textContent = '내용을 작성한 뒤 제출해 주세요.'; ta.focus();
-    logEvent('submit_blocked', { phase: 'recall' });
-  }
+  const how = await new Promise((resolve) => {
+    const fin = (h) => { CTL.handler = null; resolve(h); };
+    submit.onclick = () => {  // 빈 답은 제출되지 않는다
+      if (ta.value.trim()) return fin('submit');
+      R.submit_blocked++; ta.classList.add('missing'); err.textContent = '내용을 작성한 뒤 제출해 주세요.'; ta.focus();
+      logEvent('submit_blocked', { phase: 'recall' });
+    };
+    CTL.handler = (dir) => {
+      if (dir === 'skip') { fin('skip'); return true; }
+      if (dir === 'back' && canBack) { fin('back'); return true; }
+      return false;
+    };
+  });
   R.end = stamp(); R.duration_ms = dur(R.start, R.end);
   R.answer = ta.value; R.chars = ta.value.length; R.chars_no_space = ta.value.replace(/\s/g, '').length;
+  if (how === 'skip') R.skipped = true;
+  if (how === 'back') { R.went_back = true; await save('recall_back'); return 'back'; }
   await save('recall_submitted');
   return R;
 }
 
 // ---------- 6. 퀴즈 2: T/F (한 문제씩) ----------
 // 본 실험은 텍스트별 '중단 전' 6문항, 연습은 questions.json의 tf_practice. 순서는 참가자·텍스트별 시드로 섞는다.
+// startAt이 있으면(설문에서 뒤로 온 경우) 안내 없이 그 문항부터 다시 묻는다. 반환: 'back'(퀴즈 1로) 또는 기록.
 function seeded(str) {
   let h = 1779033703 ^ str.length;
   for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
@@ -349,13 +394,19 @@ function shuffle(arr, seedStr) {
 }
 const nextFrame = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function tfQuiz(rec, items, seedStr) {
+async function tfQuiz(rec, items, seedStr, startAt = null) {
   const Q = S.qs.tf;
-  await message(Q.title, Q.instructions.map(esc), '시작');
   const order = Q.seed_order === false ? items.slice() : shuffle(items, seedStr);
-  const T = { order: order.map((q) => q.qid), seed: seedStr, start: stamp(), end: null, duration_ms: null, n_correct: null, items: [] };
-  rec.tf = T;
-  for (let k = 0; k < order.length; k++) {
+  let T = rec.tf, k = 0;
+  if (startAt != null && T) {
+    k = startAt;
+  } else {
+    if ((await message(Q.title, Q.instructions.map(esc), '시작', true)) === 'back') return 'back';
+    if (T) (rec.tf_history ||= []).push(T);
+    T = { order: order.map((q) => q.qid), seed: seedStr, start: stamp(), end: null, duration_ms: null, n_correct: null, items: [], redo: [] };
+    rec.tf = T;
+  }
+  while (k < order.length) {
     const q = order[k], key = q.answer === 'O' ? 'T' : 'F';
     app.innerHTML = `<section class="tf"><div class="tf-inner"><div class="tf-progress">문제 ${k + 1} / ${order.length}</div>
       <p class="tf-stmt">${esc(q.statement)}</p>
@@ -364,48 +415,75 @@ async function tfQuiz(rec, items, seedStr) {
     await nextFrame();
     const shown = stamp();
     const bt = app.querySelector('.tf-t'), bf = app.querySelector('.tf-f');
-    const { response, input, at } = await new Promise((resolve) => {
-      const fin = (response, input) => { removeEventListener('keydown', onKey); resolve({ response, input, at: stamp() }); };
-      const onKey = (e) => { if (e.repeat) return; if (e.code === 'KeyT') fin('T', 'key'); else if (e.code === 'KeyF') fin('F', 'key'); };
+    const { response, input, at, nav } = await new Promise((resolve) => {
+      const fin = (o) => { removeEventListener('keydown', onKey); CTL.handler = null; resolve({ at: stamp(), ...o }); };
+      const onKey = (e) => { if (e.repeat) return; if (e.code === 'KeyT') fin({ response: 'T', input: 'key' }); else if (e.code === 'KeyF') fin({ response: 'F', input: 'key' }); };
       addEventListener('keydown', onKey);
-      bt.onclick = () => fin('T', 'click'); bf.onclick = () => fin('F', 'click');
+      bt.onclick = () => fin({ response: 'T', input: 'click' }); bf.onclick = () => fin({ response: 'F', input: 'click' });
+      CTL.handler = (dir) => { fin({ nav: dir }); return true; };
     });
-    (response === 'T' ? bt : bf).classList.add('pressed');
-    T.items.push({ position: k + 1, qid: q.qid, statement: q.statement, level: q.level ?? null, type: q.type ?? null, source: q.source ?? null,
-                   cue_category: q.cue_category ?? null, pre_event: q.pre_event ?? null, answer_key: key, response, correct: response === key,
-                   shown_t: shown.t, response_t: at.t, rt_ms: dur(shown, at), input });
+    if (nav === 'back') {
+      if (k === 0) { (rec.tf_history ||= []).push(T); rec.tf = null; return 'back'; }  // 첫 문항에서는 퀴즈 1로
+      k--; if (T.items[k]) T.redo.push(T.items[k]); T.items[k] = undefined; app.innerHTML = ''; continue;
+    }
+    const base = { position: k + 1, qid: q.qid, statement: q.statement, level: q.level ?? null, type: q.type ?? null, source: q.source ?? null,
+                   cue_category: q.cue_category ?? null, pre_event: q.pre_event ?? null, answer_key: key, shown_t: shown.t };
+    if (T.items[k]) T.redo.push(T.items[k]);
+    if (nav === 'skip') {
+      T.items[k] = { ...base, response: null, correct: null, response_t: null, rt_ms: null, input: 'experimenter_skip', skipped: true };
+    } else {
+      (response === 'T' ? bt : bf).classList.add('pressed');
+      T.items[k] = { ...base, response, correct: response === key, response_t: at.t, rt_ms: dur(shown, at), input };
+    }
     save(`tf_${k + 1}`);
     await sleep(250); app.innerHTML = ''; await sleep(250);
+    k++;
   }
-  T.end = stamp(); T.duration_ms = dur(T.start, T.end); T.n_correct = T.items.filter((x) => x.correct).length;
-  T.rt_total_ms = Math.round(T.items.reduce((n, x) => n + x.rt_ms, 0) * 10) / 10;  // 문항 사이 간격을 뺀 순수 응답 시간 합
-  T.rt_mean_ms = Math.round(T.rt_total_ms / T.items.length * 10) / 10;
+  const answered = T.items.filter((x) => x && x.rt_ms != null);
+  T.end = stamp(); T.duration_ms = dur(T.start, T.end); T.n_correct = T.items.filter((x) => x && x.correct).length;
+  T.n_skipped = T.items.filter((x) => x && x.skipped).length;
+  T.rt_total_ms = Math.round(answered.reduce((n, x) => n + x.rt_ms, 0) * 10) / 10;  // 문항 사이 간격을 뺀 순수 응답 시간 합
+  T.rt_mean_ms = answered.length ? Math.round(T.rt_total_ms / answered.length * 10) / 10 : null;
   return T;
 }
 
 // ---------- 7. 주관 설문 (7점, 한 문항씩) ----------
+// 반환: 'back'(첫 문항에서 뒤로 → 퀴즈 2 마지막 문항으로) 또는 기록.
 async function surveyScreens(rec) {
   const showCue = rec.cue_condition !== 'none';
   const items = S.qs.survey.filter((q) => !q.cueOnly || showCue);
-  const V = { start: stamp(), end: null, duration_ms: null, items: [] };
+  if (rec.survey) (rec.survey_history ||= []).push(rec.survey);
+  const V = { start: stamp(), end: null, duration_ms: null, items: [], redo: [] };
   rec.survey = V;
-  for (const q of items) {
+  let k = 0;
+  while (k < items.length) {
+    const q = items[k];
     const p = panel(`<div class="survey-card"><div class="survey-label">${esc(S.qs.survey_label)}</div>
       <h2>${esc(q.q)}</h2><p class="hint">${esc(S.qs.survey_hint)}</p>
       <div class="survey-anchors"><span><b>1</b> · ${esc(q.lo)}</span><span><b>7</b> · ${esc(q.hi)}</span></div>
       <div class="survey-scale">${[1, 2, 3, 4, 5, 6, 7].map((v) => `<button type="button" data-v="${v}">${v}</button>`).join('')}</div></div>`);
     await nextFrame();
     const shown = stamp();
-    const { value, input, at } = await new Promise((resolve) => {
-      const fin = (value, input) => { removeEventListener('keydown', onKey); resolve({ value, input, at: stamp() }); };
-      const onKey = (e) => { if (e.repeat) return; const m = e.code.match(/^(?:Digit|Numpad)([1-7])$/); if (m) fin(+m[1], 'key'); };
+    const { value, input, at, nav } = await new Promise((resolve) => {
+      const fin = (o) => { removeEventListener('keydown', onKey); CTL.handler = null; resolve({ at: stamp(), ...o }); };
+      const onKey = (e) => { if (e.repeat) return; const m = e.code.match(/^(?:Digit|Numpad)([1-7])$/); if (m) fin({ value: +m[1], input: 'key' }); };
       addEventListener('keydown', onKey);
-      p.querySelectorAll('.survey-scale button').forEach((b) => { b.onclick = () => fin(+b.dataset.v, 'click'); });
+      p.querySelectorAll('.survey-scale button').forEach((b) => { b.onclick = () => fin({ value: +b.dataset.v, input: 'click' }); });
+      CTL.handler = (dir) => { fin({ nav: dir }); return true; };
     });
-    p.querySelector(`.survey-scale button[data-v="${value}"]`).classList.add('pressed');
-    V.items.push({ id: q.id, question: q.q, lo: q.lo, hi: q.hi, value, shown_t: shown.t, response_t: at.t, rt_ms: dur(shown, at), input });
+    if (nav === 'back') {
+      if (k === 0) { (rec.survey_history ||= []).push(V); rec.survey = null; return 'back'; }
+      k--; if (V.items[k]) V.redo.push(V.items[k]); V.items[k] = undefined; continue;
+    }
+    if (V.items[k]) V.redo.push(V.items[k]);
+    if (nav === 'skip') V.items[k] = { id: q.id, question: q.q, lo: q.lo, hi: q.hi, value: null, shown_t: shown.t, response_t: null, rt_ms: null, input: 'experimenter_skip', skipped: true };
+    else {
+      p.querySelector(`.survey-scale button[data-v="${value}"]`).classList.add('pressed');
+      V.items[k] = { id: q.id, question: q.q, lo: q.lo, hi: q.hi, value, shown_t: shown.t, response_t: at.t, rt_ms: dur(shown, at), input };
+    }
     save(`survey_${q.id}`);
     await sleep(300);
+    k++;
   }
   V.end = stamp(); V.duration_ms = dur(V.start, V.end);
   return V;
@@ -423,9 +501,9 @@ function wordPayload(rec) {
         ['퀴즈 2 문항 평균 응답 시간', rec.times?.tf_rt_mean_ms], ['퀴즈 2 화면 전체 (안내 뒤부터)', rec.times?.tf_screen_ms], ['설문', rec.times?.survey_ms],
       ].map(([k, v]) => ({ question: k, answer: v == null ? '해당 없음' : fmtMs(v) })) },
       { name: `${S.qs.recall.title} (자유 회상)`, items: [{ question: '이야기 내용 재구성', answer: rec.recall?.answer || '' }] },
-      { name: `${S.qs.tf.title} (T/F)`, items: (rec.tf?.items || []).map((x) => ({ question: x.statement,
-          answer: `응답 ${x.response} · 정답 ${x.answer_key} · ${x.correct ? '맞음' : '틀림'} · 응답 시간 ${(x.rt_ms / 1000).toFixed(2)}초 (${Math.round(x.rt_ms)} ms)` })) },
-      { name: '설문 (7점)', items: (rec.survey?.items || []).map((x) => ({ question: x.question, answer: `${x.value} / 7  (1 = ${x.lo}, 7 = ${x.hi})` })) },
+      { name: `${S.qs.tf.title} (T/F)`, items: (rec.tf?.items || []).filter(Boolean).map((x) => ({ question: x.statement,
+          answer: x.skipped ? `건너뜀 (실험자) · 정답 ${x.answer_key}` : `응답 ${x.response} · 정답 ${x.answer_key} · ${x.correct ? '맞음' : '틀림'} · 응답 시간 ${(x.rt_ms / 1000).toFixed(2)}초 (${Math.round(x.rt_ms)} ms)` })) },
+      { name: '설문 (7점)', items: (rec.survey?.items || []).filter(Boolean).map((x) => ({ question: x.question, answer: x.skipped ? '건너뜀 (실험자)' : `${x.value} / 7  (1 = ${x.lo}, 7 = ${x.hi})` })) },
     ] };
 }
 // 자유 회상 채점용 Word: 내용은 회상 답변만(제목·정보·cue 조건 없음, 눈가림 채점). 참가자·Trial·글은 파일 이름에 있다.
@@ -506,12 +584,20 @@ async function runTrial(spec) {
   await message(practice ? '연습' : `글 ${spec.trial} / 3`, ['준비되면 Space나 버튼을 누르세요. 첫 문장이 바로 나타납니다.'], '시작');
   await readSentences(mat.pre, rec, 'reading_pre');
   await interruption(rec, video, practice);
-  if (spec.cue === 'none') rec.cue = null;
-  else await cueScreen(rec, practice ? mat.cue : mat.cue[spec.cue], cueMin);
-  await recallScreen(rec);
+  // cue부터는 실험자 단축키로 앞뒤로 오갈 수 있다(읽기·영상으로는 돌아가지 않음).
+  const hasCue = spec.cue !== 'none';
   const tfItems = practice ? S.qs.tf_practice : mat.quiz.filter((q) => q.section === '중단 전');
-  await tfQuiz(rec, tfItems, `${S.pid}|${spec.text}`);
-  await surveyScreens(rec);
+  if (!hasCue) rec.cue = null;
+  let step = hasCue ? 'cue' : 'recall', tfStart = null;
+  for (;;) {
+    if (step === 'cue') { await cueScreen(rec, practice ? mat.cue : mat.cue[spec.cue], cueMin); step = 'recall'; }
+    else if (step === 'recall') { step = (await recallScreen(rec, hasCue)) === 'back' ? 'cue' : 'tf'; tfStart = null; }
+    else if (step === 'tf') { step = (await tfQuiz(rec, tfItems, `${S.pid}|${spec.text}`, tfStart)) === 'back' ? 'recall' : 'survey'; }
+    else if (step === 'survey') {
+      if ((await surveyScreens(rec)) !== 'back') break;
+      step = 'tf'; tfStart = rec.tf.order.length - 1;  // 설문 첫 문항에서 뒤로 → 퀴즈 2 마지막 문항
+    }
+  }
   panel('<h2>저장 중입니다</h2><p class="hint">잠시만 기다려 주세요.</p>');  // 저장이 끝나면 바로 메뉴로 간다
   rec.end = stamp(); rec.duration_ms = dur(rec.start, rec.end);
   rec.times = { trial_ms: rec.duration_ms, reading_ms: rec.reading_pre?.duration_ms ?? null, video_ms: rec.interruption?.duration_ms ?? null,

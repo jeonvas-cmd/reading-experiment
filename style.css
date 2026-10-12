@@ -135,3 +135,7 @@ input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; 
 #save-dot { position: fixed; right: 8px; bottom: 8px; width: 8px; height: 8px; border-radius: 50%; background: #c9ccd2; z-index: 10; }
 #save-dot.ok { background: var(--ok); } #save-dot.bad { background: var(--bad); }
 #debug-badge { position: fixed; left: 8px; bottom: 6px; font: 700 11px var(--font); color: var(--bad); z-index: 10; }
+
+/* 실험자 단축키 표시 (화면 구석에 작게, 잠깐) */
+.ctl-flash { position: fixed; right: 22px; bottom: 18px; z-index: 50; font: 700 13px var(--font); color: #fff; background: rgba(30, 34, 44, .55);
+             padding: 3px 9px; border-radius: 8px; pointer-events: none; }
