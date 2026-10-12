@@ -428,15 +428,24 @@ function wordPayload(rec) {
       { name: '설문 (7점)', items: (rec.survey?.items || []).map((x) => ({ question: x.question, answer: `${x.value} / 7  (1 = ${x.lo}, 7 = ${x.hi})` })) },
     ] };
 }
+// 자유 회상 채점용 Word: 회상 답변만 담고, cue 조건은 적지 않는다(눈가림 채점)
+function recallPayload(rec) {
+  const R = rec.recall || {};
+  return { kind: 'recall', hide_cue: true, pid: S.pid, trial: rec.trial, text: rec.text, title: rec.title, cue_condition: rec.cue_condition,
+    session_id: S.data.meta.session_id, submitted_iso: R.end?.iso || new Date().toISOString(),
+    extra_info: [`글자 수: ${R.chars ?? 0} (공백 제외 ${R.chars_no_space ?? 0})`, `작성 시간: ${R.duration_ms == null ? '–' : fmtMs(R.duration_ms)}`],
+    sections: [{ name: '자유 회상 답변', items: [{ question: '앞서 읽었던 이야기의 내용을 기억나는 대로 재구성', answer: R.answer || '' }] }] };
+}
 async function saveWord(rec) {
-  const payload = wordPayload(rec);
+  const payload = wordPayload(rec), rpayload = recallPayload(rec);
   if (S.STATIC) {  // 서버 없는 모드: Word는 실험 끝 zip에 넣고, 지금까지의 기록을 Google 드라이브로 보낸다
     const w = STATIC_STORE.wordFor(S.pid, S.data.meta.session_id, payload);
-    rec.word_file = w.name; rec.word_saved = new Date().toISOString();
-    rec.word_payload = payload;  // 기록 보기 페이지에서 Word를 다시 만들 수 있게 내용을 함께 둔다
+    const wr = STATIC_STORE.wordFor(S.pid, S.data.meta.session_id, rpayload);
+    rec.word_file = w.name; rec.recall_word_file = wr.name; rec.word_saved = new Date().toISOString();
+    rec.word_payload = payload; rec.recall_payload = rpayload;  // 기록 보기 페이지에서 Word를 다시 만들 수 있게 내용을 함께 둔다
     await save(`word_${rec.trial}`);
-    if (S.cfg.word_browser_download) STATIC_STORE.download(w.name, w.blob);
-    await driveSync([{ name: w.name, blob: w.blob }], `trial${rec.trial}`);
+    if (S.cfg.word_browser_download) { STATIC_STORE.download(w.name, w.blob); STATIC_STORE.download(wr.name, wr.blob); }
+    await driveSync([{ name: w.name, blob: w.blob }, { name: wr.name, blob: wr.blob }], `trial${rec.trial}`);
     return;
   }
   for (let tries = 0; tries < 3; tries++) {
@@ -450,6 +459,10 @@ async function saveWord(rec) {
         setTimeout(() => URL.revokeObjectURL(url), 10000);
       }
       rec.word_file = name; rec.word_saved = new Date().toISOString();
+      try {  // 회상 채점용 Word도 서버에 저장한다
+        const r2 = await fetch('/api/word', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rpayload) });
+        if (r2.ok) rec.recall_word_file = decodeURIComponent(r2.headers.get('X-File-Name') || '');
+      } catch (e) { logEvent('word_failed', { error: String(e), trial: rec.trial, kind: 'recall' }); }
       return;
     } catch (e) { logEvent('word_failed', { error: String(e), trial: rec.trial }); await sleep(1000); }
   }
@@ -469,8 +482,10 @@ async function driveSync(extra = [], why = '') {
 function staticBundle() {
   const files = STATIC_STORE.participantFiles(S.data);
   for (const rec of [...(S.data.practice_runs || []).slice(-1), ...S.data.trials].filter((r) => r && r.end)) {
-    const w = STATIC_STORE.wordFor(S.pid, S.data.meta.session_id, wordPayload(rec));
-    files.push({ name: `word/${w.name}`, blob: w.blob });
+    for (const pl of [wordPayload(rec), recallPayload(rec)]) {
+      const w = STATIC_STORE.wordFor(S.pid, S.data.meta.session_id, pl);
+      files.push({ name: `word/${w.name}`, blob: w.blob });
+    }
   }
   return files;
 }

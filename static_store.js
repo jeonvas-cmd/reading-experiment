@@ -58,12 +58,14 @@ const STATIC_STORE = (() => {
     return makeZip([{ name: '[Content_Types].xml', data: types }, { name: '_rels/.rels', data: rels }, { name: 'word/document.xml', data: doc }]);
   }
   const cueKo = { none: '없음', mdds: 'MDDS', sm: '상황 모델', example: '연습 예시' };
-  function wordFor(pid, sessionId, payload) {  // payload: saveWord가 서버에 보내는 것과 같은 구조
+  function wordFor(pid, sessionId, payload) {  // payload: saveWord가 서버에 보내는 것과 같은 구조 (kind = 'recall'이면 회상 채점용)
+    const recall = payload.kind === 'recall';
     const label = payload.trial === 0 ? '연습' : `Trial ${payload.trial}`;
-    const info = [`참가자: ${pid}`, `Trial: ${payload.trial === 0 ? '연습' : payload.trial}`, `글: ${payload.title} (${payload.text})`,
-                  `cue 조건: ${cueKo[payload.cue_condition] || payload.cue_condition}`, `제출 시각: ${payload.submitted_iso}`, `세션: ${sessionId}`];
-    const name = `${pid}_${payload.trial === 0 ? 'practice' : 'trial' + payload.trial}_${payload.text}.docx`;
-    return { name, blob: buildDocx(`${pid} · ${label} 답변`, info, payload.sections) };
+    const info = [`참가자: ${pid}`, `Trial: ${payload.trial === 0 ? '연습' : payload.trial}`, `글: ${payload.title} (${payload.text})`];
+    if (!payload.hide_cue) info.push(`cue 조건: ${cueKo[payload.cue_condition] || payload.cue_condition}`);
+    info.push(...(payload.extra_info || []), `제출 시각: ${payload.submitted_iso}`, `세션: ${sessionId}`);
+    const name = `${pid}_${payload.trial === 0 ? 'practice' : 'trial' + payload.trial}_${payload.text}${recall ? '_회상' : ''}.docx`;
+    return { name, blob: buildDocx(`${pid} · ${label} ${recall ? '자유 회상' : '답변'}`, info, payload.sections) };
   }
 
   // ---------- CSV (export_csv.py의 participant_rows 중 responses·trials와 같은 열) ----------
@@ -135,8 +137,10 @@ const STATIC_STORE = (() => {
   async function bundleZip(d) {
     const files = participantFiles(d).map((f) => ({ name: f.name, data: f.data }));
     for (const rec of [...(d.practice_runs || []).slice(-1), ...(d.trials || [])].filter((r) => r && r.end && r.word_payload)) {
-      const w = wordFor(d.meta.pid, d.meta.session_id, rec.word_payload);
-      files.push({ name: `word/${w.name}`, data: new Uint8Array(await w.blob.arrayBuffer()) });
+      for (const pl of [rec.word_payload, rec.recall_payload].filter(Boolean)) {
+        const w = wordFor(d.meta.pid, d.meta.session_id, pl);
+        files.push({ name: `word/${w.name}`, data: new Uint8Array(await w.blob.arrayBuffer()) });
+      }
     }
     return makeZip(files);
   }
