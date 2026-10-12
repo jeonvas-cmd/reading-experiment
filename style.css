@@ -1,0 +1,137 @@
+/* 실험 화면. 밝은 배경 하나로 고정해 참가자마다 화면 조건이 같게 한다(다크 모드 미적용).
+   구성: 안내·메뉴·cue·퀴즈 1·설문은 가운데 흰 카드, 읽기·T/F·영상은 화면 전체를 쓴다. */
+:root {
+  --bg: #f4f5f7; --card: #ffffff; --fg: #1d2230; --muted: #a7acb5; --soft: #626a78; --line: #e3e5ea; --accent: #2563eb;
+  --ok: #2e7d4f; --bad: #c0392b; --orange: #f39c0b; --tint: #f3f6fc;
+  --radius: 18px; --shadow: 0 10px 36px rgba(20, 30, 50, .08);
+  /* 글꼴은 하나로 통일: 실험 컴퓨터(Windows)에는 맑은 고딕, Mac에서는 애플 SD 산돌고딕 Neo가 쓰인다 */
+  --font: "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  --ui: var(--font);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); }
+body { font-family: var(--font); font-size: 18px; line-height: 1.75; letter-spacing: -0.005em; word-break: keep-all; overflow-wrap: break-word;
+       user-select: none; -webkit-user-select: none; }
+.hidden { display: none !important; }
+
+/* ---------- 카드 (안내·번호·메뉴·cue·퀴즈 1·설문·종료) ---------- */
+#app { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 20px; }
+.panel { width: min(720px, 100%); background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+         padding: 48px 56px; display: grid; gap: 20px; }
+.panel h1 { font-size: 30px; line-height: 1.35; margin: 0; letter-spacing: -0.02em; }
+.panel h2 { font-size: 25px; line-height: 1.45; margin: 0 0 4px; letter-spacing: -0.015em; }
+.panel p { margin: 0; }
+.panel > p:not(.hint):not(.error) { font-size: 18.5px; line-height: 1.85; }
+.hint { color: var(--soft); font-size: 16px; line-height: 1.7; }
+.key { display: inline-block; min-width: 2.4em; padding: 1px 9px; margin: 0 2px; border: 1px solid #cfd3da; border-bottom-width: 3px; border-radius: 7px;
+       background: #fff; font-size: 15px; line-height: 1.5; text-align: center; color: var(--fg); vertical-align: 1px; }
+.error { color: var(--bad); font-size: 16px; }
+.error:empty { display: none; }
+
+/* 버튼: 카드 안의 주 버튼은 카드 폭을 꽉 채운다 */
+button { font: 700 18px var(--font); padding: 15px 28px; border-radius: 14px; border: 1px solid var(--accent); background: var(--accent);
+         color: #fff; cursor: pointer; transition: filter .15s, background .15s; }
+button:hover:not(:disabled) { filter: brightness(1.06); }
+button:disabled { background: #cdd1d8; border-color: #cdd1d8; color: #fff; cursor: not-allowed; }
+button.ghost { background: transparent; color: var(--accent); border-color: #bfcdf3; }
+.panel > button { width: 100%; margin-top: 8px; }
+.row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.row-btns button { width: 100%; }
+
+/* 번호 입력 */
+input[type=text] { font: 700 26px var(--font); padding: 14px 16px; width: 100%; text-align: center; letter-spacing: .12em;
+                   border: 1px solid #cfd3da; border-radius: 12px; background: #fff; color: var(--fg); }
+input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+
+/* ---------- 실험 메뉴 ---------- */
+.panel:has(.menu) { width: min(760px, 100%); padding: 0; background: none; box-shadow: none; }
+.menu { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 46px 56px; display: grid; gap: 22px; }
+.menu-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.menu-head h1 { font-size: 30px; }
+.menu-head span { color: var(--soft); font-size: 17px; }
+.menu-head b { color: var(--fg); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 2px 0; width: 100%; }
+.menu button { width: 100%; font-size: 19px; padding: 17px; }
+.menu .btn-practice { background: var(--orange); border-color: var(--orange); }
+.menu .btn-trial { background: var(--accent); border-color: var(--accent); }
+.menu-label { color: var(--soft); font-size: 16px; margin-bottom: -14px; }
+.menu-next { font-size: 27px; font-weight: 700; color: #26304a; letter-spacing: -0.015em; }
+.menu-status { color: var(--muted); font-size: 15px; }
+
+/* ---------- 자기 속도 읽기 ---------- */
+/* 현재 문장이 화면 높이 45% 지점에 오고, 읽은 문장은 연해지며 위로 올라간다. 한 줄은 한글 약 36자. */
+#reader { position: fixed; inset: 0; overflow: hidden; background: var(--card); }
+#reader .column { position: absolute; left: 50%; width: min(700px, calc(100% - 48px)); transform: translateX(-50%); top: 0; transition: transform .18s ease-out; }
+#reader .s { font-size: 22px; line-height: 1.9; color: #14181f; margin: 0 0 .4em; letter-spacing: -0.01em; }
+#reader .s.read { color: #b9bec6; }
+#reader .s.newpara { margin-top: 1.2em; }
+#reader .foot { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); padding: 6px 14px; border-radius: 999px;
+                background: #f1f2f5; color: var(--soft); font-size: 14px; }
+#reader::before, #reader::after { content: ''; position: fixed; left: 0; right: 0; height: 90px; z-index: 1; pointer-events: none; }
+#reader::before { top: 0; background: linear-gradient(var(--card), rgba(255,255,255,0)); }
+#reader::after { bottom: 0; background: linear-gradient(rgba(255,255,255,0), var(--card) 70%); }
+#reader .foot { z-index: 2; }
+
+/* ---------- 중단 영상: 화면을 꽉 채우는 검은 무대 ---------- */
+#stage { position: fixed; inset: 0; background: #000; display: flex; align-items: center; justify-content: center; }
+#stage video { width: 100vw; height: 100vh; object-fit: contain; background: #000; }
+#stage > .yt-shield { position: fixed; inset: 0; z-index: 2; }
+#stage > .yt-fallback { position: fixed; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; }
+#stage .placeholder { color: #8a8f99; font-size: 18px; text-align: center; }
+#stage .skip-video { position: fixed; right: 28px; bottom: 28px; z-index: 4; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.45); color: #fff; }
+#stage .alert { position: fixed; top: 14px; left: 14px; right: 14px; z-index: 5; background: var(--bad); color: #fff; padding: 10px 14px; border-radius: 10px; font-size: 15px; }
+
+/* ---------- cue 목록: 항목을 칸으로 나누지 않고 한 덩어리 글로 보인다 ---------- */
+.panel:has(.cue-list) { width: min(800px, 100%); }
+.cue-list { margin: 4px 0 0; padding: 22px 26px 22px 44px; border-radius: 12px; background: var(--tint);
+            font-size: 18.5px; line-height: 1.95; display: block; }
+.cue-list li { padding-left: 4px; }
+.cue-list { list-style-type: "-  "; }
+.cue-list li::marker { color: var(--soft); }
+
+/* ---------- 퀴즈 1: 자유 회상 ---------- */
+.panel:has(.recall-box) { width: min(860px, 100%); padding: 36px 52px; gap: 16px; }
+.instr-box { display: grid; gap: 8px; padding: 18px 22px; border-radius: 12px; background: var(--tint); border-left: 4px solid var(--accent); }
+.instr-box .instr { font-size: 17px; line-height: 1.75; color: #2a3140; }
+.recall-box { font: 18px/1.85 var(--font); width: 100%; min-height: max(180px, calc(100vh - 560px)); padding: 16px 18px; border: 1px solid #cfd3da; border-radius: 12px;
+              background: #fff; color: var(--fg); resize: vertical; user-select: text; -webkit-user-select: text; }
+.recall-box:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+.recall-box.missing { border-color: var(--bad); background: #fdf3f2; }
+
+/* ---------- 퀴즈 2: T/F ---------- */
+.tf { position: fixed; inset: 0; background: var(--card); display: grid; place-items: center; padding: 40px 6vw; }
+.tf-inner { width: min(1100px, 100%); display: grid; gap: 0; }
+.tf-progress { justify-self: start; color: var(--soft); font-size: 17px; font-weight: 600; padding: 5px 14px; border-radius: 999px; background: #f1f2f5; }
+.tf-stmt { font-size: clamp(28px, 3vw, 40px); font-weight: 500; line-height: 1.55; margin: 36px 0 60px; color: #111; letter-spacing: -0.015em; min-height: 3.1em; }
+.tf-btns { display: flex; justify-content: center; gap: 44px; }
+.tf-btns button { width: 196px; height: 196px; border-radius: 20px; display: grid; place-content: center; gap: 6px; padding: 0; border-width: 3px; }
+.tf-btns b { font-size: 64px; line-height: 1; }
+.tf-btns span { font-size: 22px; font-weight: 500; }
+.tf-t { background: #d1f7e3; border-color: #6ee0ad; color: #04724a; }
+.tf-f { background: #ffe3e6; border-color: #fda4af; color: #be123c; }
+.tf-btns button.pressed { filter: brightness(.92); transform: scale(.97); }
+.tf-hint { text-align: center; color: var(--muted); font-size: 18px; margin-top: 56px; }
+
+/* ---------- 주관 설문 ---------- */
+.panel:has(.survey-card) { width: min(880px, 100%); padding: 44px 52px; }
+.survey-card { display: grid; gap: 12px; }
+.survey-label { color: var(--accent); font-weight: 700; font-size: 15px; }
+.survey-card h2 { font-size: 25px; line-height: 1.5; }
+.survey-anchors { display: flex; justify-content: space-between; gap: 16px; color: var(--soft); font-size: 15px; margin-top: 18px; }
+.survey-anchors b { color: var(--fg); }
+.survey-scale { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.survey-scale button { height: 82px; font-size: 25px; background: #fff; color: var(--fg); border: 1px solid #cfd3da; border-radius: 12px; padding: 0; }
+.survey-scale button:hover, .survey-scale button.pressed { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ---------- 좁은 화면 ---------- */
+@media (max-width: 640px) {
+  .panel, .menu { padding: 30px 22px; }
+  .menu-next { font-size: 22px; }
+  .tf-btns { gap: 20px; } .tf-btns button { width: 140px; height: 140px; }
+  .survey-scale { gap: 6px; } .survey-scale button { height: 60px; font-size: 20px; }
+}
+
+/* ---------- 실험자 표시 ---------- */
+#save-dot { position: fixed; right: 8px; bottom: 8px; width: 8px; height: 8px; border-radius: 50%; background: #c9ccd2; z-index: 10; }
+#save-dot.ok { background: var(--ok); } #save-dot.bad { background: var(--bad); }
+#debug-badge { position: fixed; left: 8px; bottom: 6px; font: 700 11px var(--font); color: var(--bad); z-index: 10; }

@@ -1,0 +1,37 @@
+{
+ "_설명": "GitHub Pages(서버 없는 모드)용으로 build_pages.py가 만든 설정. 영상은 국가유산채널 원본 주소에서 재생하고, 기록은 브라우저 저장 + 실험 끝 zip 다운로드 + (설정 시) Google 드라이브 전송.",
+ "cue_min_sec": 15,
+ "video_error_wait_sec": 540,
+ "word_browser_download": false,
+ "bundle_download_at_end": true,
+ "videos": {
+  "V1": {
+   "file": "V1_백제금동대향로.mp4",
+   "url": "https://ucistream.k-heritage.tv/1501001/001/V/1501001-001-V00079_trans_2.mp4"
+  },
+  "V2": {
+   "file": "V2_아파트고분.mp4",
+   "url": "https://ucistream.k-heritage.tv/1501001/001/V/1501001-001-V00276_trans_2.mp4"
+  },
+  "V3": {
+   "file": "V3_가야소녀.mp4",
+   "url": "https://ucistream.k-heritage.tv/1501001/001/V/1501001-001-V00080_trans_2.mp4"
+  }
+ },
+ "practice": {
+  "video": {
+   "file": "P0_수원화성_연습.mp4",
+   "url": "https://ucistream.k-heritage.tv/1709003/001/V/1709003-001-V00007_trans_1.mp4"
+  },
+  "cue_min_sec": 5
+ },
+ "debug": {
+  "interruption_sec": 10,
+  "cue_min_sec": 2
+ },
+ "mode": "static",
+ "gdrive": {
+  "endpoint": "",
+  "token": ""
+ }
+}

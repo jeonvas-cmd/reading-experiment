@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>실험 기록 보기</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+<style>
+/* 실험자용 기록 보기: 참가자별 진행 상태와 파일. 10초마다 새로 고침 */
+body { user-select: text; -webkit-user-select: text; }
+.rec { width: min(1100px, 100%); margin: 0 auto; padding: 28px 16px 48px; display: grid; gap: 14px; }
+.rec h1 { font-size: 24px; margin: 0; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; color: var(--soft); font-size: 14px; }
+.bar label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; white-space: nowrap; }
+th { background: #f3f2ee; font-weight: 600; color: var(--soft); position: sticky; top: 0; }
+tr:last-child td { border-bottom: 0; }
+td.files { white-space: normal; min-width: 260px; }
+td a { color: var(--accent); text-decoration: none; }
+td.files a { display: inline-block; margin: 0 10px 4px 0; }
+td a:hover { text-decoration: underline; }
+.tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: #eef0f4; color: var(--soft); }
+.tag.done { background: #e2f1e6; color: var(--ok); } .tag.test { background: #fbf0d6; color: #8a5a00; }
+.small { padding: 6px 12px; font-size: 13px; }
+.empty { color: var(--soft); padding: 24px; text-align: center; }
+</style>
+</head>
+<body>
+<main class="rec">
+  <h1>실험 기록 보기</h1>
+  <p class="hint" id="where">기록은 이 컴퓨터의 <code>experiment/data/</code>(Word 파일은 <code>data/word/</code>)에 저장되어 있습니다. 여기서 파일을 열거나 참가자별 묶음(zip)을 내려받을 수 있습니다. 실험 화면과 다른 탭에서 여세요.</p>
+  <div class="bar">
+    <button type="button" class="small" id="reload">새로 고침</button>
+    <label><input type="checkbox" id="showTest"> 체험(P99)·시험 기록도 보기</label>
+    <span id="when"></span>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>번호</th><th>구분</th><th>진행</th><th>시작</th><th>끝</th><th>마지막 저장</th><th>파일</th><th>묶음</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table></div>
+</main>
+<script src="static_store.js"></script>
+<script>
+// 서버 모드(server.py)면 서버의 data/ 폴더 기록을, 서버 없는 모드(GitHub Pages)면 이 브라우저에 저장된 기록을 보여 준다.
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const t = (iso) => iso ? new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–';
+let STATIC = null;
+function localRecords() {
+  const out = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!/^exp_P\d{2}$/.test(k)) continue;
+    try {
+      const d = JSON.parse(localStorage.getItem(k)).data, m = d.meta;
+      out.push({ pid: m.pid, test: m.test, debug: m.debug, started: m.started?.iso, finished: m.finished?.iso, saved_at: m.saved_at || null,
+                 trials_done: (d.trials || []).filter((x) => x.end).length, practice_done: (d.practice_runs || []).some((x) => x.end), d });
+    } catch (e) {}
+  }
+  return out.sort((a, b) => a.pid.localeCompare(b.pid));
+}
+async function load() {
+  const rows = document.getElementById('rows'), showTest = document.getElementById('showTest').checked;
+  try {
+    if (STATIC === null) {
+      const cfg = await (await fetch('config.json')).json();
+      STATIC = cfg.mode === 'static';
+      if (STATIC) document.getElementById('where').innerHTML = '서버 없는 모드입니다. 기록은 <b>이 노트북의 이 브라우저</b>에 저장되어 있고, 실험이 끝날 때 다운로드 폴더에 zip으로도 저장됩니다(Google 드라이브 전송을 설정했다면 드라이브에도 있음). 다른 노트북의 기록은 그 노트북에서 보세요. 실험 화면과 다른 탭에서 여세요.';
+    }
+    const recs = (STATIC ? localRecords() : await (await fetch('/api/records')).json()).filter((r) => showTest || !(r.test || r.debug));
+    rows.innerHTML = recs.length ? recs.map((r) => {
+      const kind = r.test === 'researcher' ? '<span class="tag test">연구자 체험</span>' : (r.test || r.debug) ? '<span class="tag test">시험</span>' : '<span class="tag">참가자</span>';
+      const prog = r.finished ? '<span class="tag done">완료</span>' : `연습 ${r.practice_done ? '✓' : '–'} · 글 ${r.trials_done}/3`;
+      const files = STATIC ? '<span class="hint">zip 안에 JSON·CSV·Word</span>'
+        : r.files.map((f) => `<a href="/api/file?pid=${r.pid}&name=${encodeURIComponent(f)}" ${f.endsWith('.json') ? 'target="_blank"' : ''}>${esc(f)}</a>`).join('');
+      const zip = STATIC ? `<a href="#" data-zip="${r.pid}">zip 내려받기</a>` : `<a href="/api/bundle?pid=${r.pid}">zip 내려받기</a>`;
+      return `<tr><td><b>${r.pid}</b></td><td>${kind}</td><td>${prog}</td><td>${t(r.started)}</td><td>${t(r.finished)}</td><td>${esc(r.saved_at?.replace('T', ' ') || '–')}</td>
+        <td class="files">${files}</td><td>${zip}</td></tr>`;
+    }).join('') : '<tr><td colspan="8" class="empty">아직 기록이 없습니다.</td></tr>';
+    if (STATIC) rows.querySelectorAll('[data-zip]').forEach((a) => a.onclick = async (e) => {
+      e.preventDefault();
+      const d = localRecords().find((r) => r.pid === a.dataset.zip).d;
+      STATIC_STORE.download(`${d.meta.pid}_기록.zip`, await STATIC_STORE.bundleZip(d));
+    });
+    document.getElementById('when').textContent = `불러온 시각 ${new Date().toLocaleTimeString('ko-KR')}`;
+  } catch (e) { rows.innerHTML = `<tr><td colspan="8" class="empty">기록을 불러올 수 없습니다: ${esc(e)}</td></tr>`; }
+}
+document.getElementById('reload').onclick = load;
+document.getElementById('showTest').onchange = load;
+load(); setInterval(load, 10000);
+</script>
+</body>
+</html>

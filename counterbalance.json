@@ -1,0 +1,692 @@
+{
+ "P01": {
+  "sequence": 1,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V1"
+   }
+  ]
+ },
+ "P02": {
+  "sequence": 2,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V2"
+   }
+  ]
+ },
+ "P03": {
+  "sequence": 3,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "none",
+    "video": "V2"
+   }
+  ]
+ },
+ "P04": {
+  "sequence": 4,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   }
+  ]
+ },
+ "P05": {
+  "sequence": 5,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V3"
+   }
+  ]
+ },
+ "P06": {
+  "sequence": 6,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V1"
+   }
+  ]
+ },
+ "P07": {
+  "sequence": 1,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V2"
+   }
+  ]
+ },
+ "P08": {
+  "sequence": 2,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V3"
+   }
+  ]
+ },
+ "P09": {
+  "sequence": 3,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "none",
+    "video": "V2"
+   }
+  ]
+ },
+ "P10": {
+  "sequence": 4,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   }
+  ]
+ },
+ "P11": {
+  "sequence": 5,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V1"
+   }
+  ]
+ },
+ "P12": {
+  "sequence": 6,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V1"
+   }
+  ]
+ },
+ "P13": {
+  "sequence": 1,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V2"
+   }
+  ]
+ },
+ "P14": {
+  "sequence": 2,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V1"
+   }
+  ]
+ },
+ "P15": {
+  "sequence": 3,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "none",
+    "video": "V2"
+   }
+  ]
+ },
+ "P16": {
+  "sequence": 4,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   }
+  ]
+ },
+ "P17": {
+  "sequence": 5,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V1"
+   }
+  ]
+ },
+ "P18": {
+  "sequence": 6,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "none",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V3"
+   }
+  ]
+ },
+ "P19": {
+  "sequence": 1,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V2"
+   }
+  ]
+ },
+ "P20": {
+  "sequence": 2,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V2"
+   }
+  ]
+ },
+ "P21": {
+  "sequence": 3,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "none",
+    "video": "V1"
+   }
+  ]
+ },
+ "P22": {
+  "sequence": 4,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "none",
+    "video": "V1"
+   }
+  ]
+ },
+ "P23": {
+  "sequence": 5,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V3"
+   }
+  ]
+ },
+ "P24": {
+  "sequence": 6,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "none",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V3"
+   }
+  ]
+ },
+ "P25": {
+  "sequence": 1,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "none",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V2"
+   }
+  ]
+ },
+ "P26": {
+  "sequence": 2,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V1"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V2"
+   }
+  ]
+ },
+ "P27": {
+  "sequence": 3,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "none",
+    "video": "V1"
+   }
+  ]
+ },
+ "P28": {
+  "sequence": 4,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T2",
+    "cue": "sm",
+    "video": "V2"
+   },
+   {
+    "trial": 2,
+    "text": "T3",
+    "cue": "mdds",
+    "video": "V3"
+   },
+   {
+    "trial": 3,
+    "text": "T1",
+    "cue": "none",
+    "video": "V1"
+   }
+  ]
+ },
+ "P29": {
+  "sequence": 5,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T1",
+    "cue": "mdds",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T2",
+    "cue": "none",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T3",
+    "cue": "sm",
+    "video": "V3"
+   }
+  ]
+ },
+ "P30": {
+  "sequence": 6,
+  "trials": [
+   {
+    "trial": 1,
+    "text": "T3",
+    "cue": "none",
+    "video": "V1"
+   },
+   {
+    "trial": 2,
+    "text": "T1",
+    "cue": "sm",
+    "video": "V2"
+   },
+   {
+    "trial": 3,
+    "text": "T2",
+    "cue": "mdds",
+    "video": "V3"
+   }
+  ]
+ }
+}
