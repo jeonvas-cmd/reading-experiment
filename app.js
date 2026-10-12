@@ -445,7 +445,8 @@ async function saveWord(rec) {
     rec.word_payload = payload; rec.recall_payload = rpayload;  // 기록 보기 페이지에서 Word를 다시 만들 수 있게 내용을 함께 둔다
     await save(`word_${rec.trial}`);
     if (S.cfg.word_browser_download) { STATIC_STORE.download(w.name, w.blob); STATIC_STORE.download(wr.name, wr.blob); }
-    await driveSync([{ name: w.name, blob: w.blob }, { name: wr.name, blob: wr.blob }], `trial${rec.trial}`);
+    // 드라이브 전송은 몇 초 걸리므로 기다리지 않고 뒤에서 보낸다(화면이 멈춘 것처럼 보이지 않게). 실패해도 다음 Trial 때 전체 기록을 다시 보낸다.
+    driveSync([{ name: w.name, blob: w.blob }, { name: wr.name, blob: wr.blob }], `trial${rec.trial}`);
     return;
   }
   for (let tries = 0; tries < 3; tries++) {
@@ -511,6 +512,7 @@ async function runTrial(spec) {
   const tfItems = practice ? S.qs.tf_practice : mat.quiz.filter((q) => q.section === '중단 전');
   await tfQuiz(rec, tfItems, `${S.pid}|${spec.text}`);
   await surveyScreens(rec);
+  panel('<h2>저장 중입니다</h2><p class="hint">잠시만 기다려 주세요.</p>');  // 저장이 끝나면 바로 메뉴로 간다
   rec.end = stamp(); rec.duration_ms = dur(rec.start, rec.end);
   rec.times = { trial_ms: rec.duration_ms, reading_ms: rec.reading_pre?.duration_ms ?? null, video_ms: rec.interruption?.duration_ms ?? null,
                 cue_ms: rec.cue?.duration_ms ?? null, recall_ms: rec.recall?.duration_ms ?? null, tf_screen_ms: rec.tf?.duration_ms ?? null,

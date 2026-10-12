@@ -131,7 +131,10 @@ const STATIC_STORE = (() => {
       else payload.files.push({ name: f.name.split('/').pop(), text: f.data, mime: f.name.endsWith('.csv') ? 'text/csv' : 'application/json' });
     }
     // Apps Script는 다른 출처의 응답을 읽을 수 없으므로(no-cors) 보내기만 하고 성공 여부는 확인하지 않는다.
-    await fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+    const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 60000);  // 60초가 넘으면 포기(기록은 브라우저에 남음)
+    try {
+      await fetch(endpoint, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload), signal: ctl.signal });
+    } finally { clearTimeout(timer); }
     return true;
   }
 
