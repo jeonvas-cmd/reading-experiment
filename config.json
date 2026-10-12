@@ -31,7 +31,7 @@
  },
  "mode": "static",
  "gdrive": {
-  "endpoint": "",
-  "token": ""
+  "endpoint": "https://script.google.com/macros/s/AKfycbxI1x266Z7148tp_qYygm1Ti_8yWNft61TuKY_nrKfaFeRfn3o-Tv7p53JxEuUAXT6K/exec",
+  "token": "FgTRwrSY01CjrAbAyMXx0fRq"
  }
 }
