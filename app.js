@@ -28,7 +28,7 @@ const TXT = {
   ],
   readHint: 'Space: 다음 문장',
   cueTitle: '앞에서 읽은 내용',
-  cueHint: '지금까지 읽은 글의 내용 일부입니다. 읽어 본 뒤 <span class="key">Space</span>를 누르거나 버튼을 눌러 다음으로 넘어가세요.',  // 최소 시간(cue_min_sec)은 안내하지 않고 그동안 버튼과 Space를 막아 둔다
+  cueHint: '지금까지 읽은 글의 내용 일부입니다. 끝까지 읽은 뒤 <span class="key">Space</span>를 누르거나 버튼을 눌러 다음으로 넘어가세요.',  // 최소 시간(cue_min_sec)은 안내하지 않는다. 버튼 모양도 바꾸지 않고, 그 전의 입력은 조용히 무시한다
 };
 
 // ---------- 시각·기록·저장 ----------
@@ -333,12 +333,24 @@ async function cueScreen(rec, items, minSec) {
   rec.cue = C;
   const p = panel(`<h2>${TXT.cueTitle}</h2><p class="hint">${TXT.cueHint}</p>
     <ul class="cue-list">${items.map((x) => `<li>${esc(x.text)}</li>`).join('')}</ul>
-    <button type="button" disabled>다음</button>`);
+    <button type="button">다음</button>`);
   save('cue');
-  const b = p.querySelector('button');
-  const t = setTimeout(() => { b.disabled = false; C.enabled = stamp(); }, minSec * 1000);
-  C.input = await waitClickOrSpace(b);  // 최소 시간이 지나 버튼이 켜진 뒤 클릭 또는 Space로 넘어감 (실험자 건너뛰기는 언제나)
-  clearTimeout(t);
+  // 최소 시간이 언제 끝나는지 참가자가 알 수 없게 한다: 버튼은 처음부터 켜진 모양이고, 최소 시간 전의 Space·클릭은 넘어가지 않고 기록만 한다(early_presses).
+  // Space는 새로 누른 것만 받는다(누르고 있어 생기는 자동 반복 무시). 실험자 건너뛰기는 언제나 된다.
+  const b = p.querySelector('button'), unlockAt = performance.now() + minSec * 1000;
+  C.early_presses = [];
+  C.input = await new Promise((resolve) => {
+    const fin = (how) => { removeEventListener('keydown', onKey); CTL.handler = null; resolve(how); };
+    const tryGo = (how) => {
+      if (performance.now() < unlockAt) { C.early_presses.push({ t: stamp().t, input: how }); return; }
+      fin(how);
+    };
+    const onKey = (e) => { if (e.code !== 'Space' || e.repeat) return; e.preventDefault(); tryGo('key'); };
+    addEventListener('keydown', onKey);
+    b.onclick = () => tryGo('click');
+    CTL.handler = (dir) => { if (dir === 'skip') { fin('experimenter_skip'); return true; } return false; };
+  });
+  C.enabled_after_ms = minSec * 1000; C.n_early_presses = C.early_presses.length;
   C.end = stamp(); C.duration_ms = dur(C.start, C.end);
   return C;
 }

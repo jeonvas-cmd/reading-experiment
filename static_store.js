@@ -99,7 +99,7 @@ const STATIC_STORE = (() => {
         reading_pre_ms_per_char: chars ? Math.round(sents.reduce((n, s) => n + s.rt_ms, 0) / chars * 100) / 100 : null,
         interruption_ms: I.duration_ms, video_file: I.video_file, video_duration: I.video_duration, video_time_at_stop: I.video_time_at_stop,
         video_ended_by: I.ended_by, video_error: I.error, video_buffering_n: (I.events || []).filter((e) => e.state === 'buffering').length,
-        cue_ms: C ? C.duration_ms : null, cue_n_items: C ? (C.items || []).length : null, cue_input: C ? C.input : null,
+        cue_ms: C ? C.duration_ms : null, cue_n_items: C ? (C.items || []).length : null, cue_input: C ? C.input : null, cue_early_presses: C ? (C.n_early_presses ?? null) : null,
         recall_ms: Rc ? Rc.duration_ms : null, recall_chars: Rc ? Rc.chars : null,
         tf_ms: T.duration_ms, tf_rt_total_ms: T.rt_total_ms, tf_rt_mean_ms: T.rt_mean_ms, tf_n: (T.items || []).filter(Boolean).length, tf_correct: T.n_correct, tf_skipped: T.n_skipped ?? 0,
         survey_ms: (tr.survey || {}).duration_ms, word_file: tr.word_file, started_iso: tr.start?.iso, ended_iso: tr.end?.iso,
