@@ -34,7 +34,7 @@ td a:hover { text-decoration: underline; }
   <p class="hint" id="where">기록은 이 컴퓨터의 <code>experiment/data/</code>(Word 파일은 <code>data/word/</code>)에 저장되어 있습니다. 여기서 파일을 열거나 참가자별 묶음(zip)을 내려받을 수 있습니다. 실험 화면과 다른 탭에서 여세요.</p>
   <div class="bar">
     <button type="button" class="small" id="reload">새로 고침</button>
-    <label><input type="checkbox" id="showTest"> 체험(P99)·시험 기록도 보기</label>
+    <label><input type="checkbox" id="showTest"> 파일럿(P90–P98)·체험(P99)·시험 기록도 보기</label>
     <span id="when"></span>
   </div>
   <div class="tbl"><table>
@@ -71,7 +71,7 @@ async function load() {
     }
     const recs = (STATIC ? localRecords() : await (await fetch('/api/records')).json()).filter((r) => showTest || !(r.test || r.debug));
     rows.innerHTML = recs.length ? recs.map((r) => {
-      const kind = r.test === 'researcher' ? '<span class="tag test">연구자 체험</span>' : (r.test || r.debug) ? '<span class="tag test">시험</span>' : '<span class="tag">참가자</span>';
+      const kind = r.test === 'researcher' ? '<span class="tag test">연구자 체험</span>' : r.test === 'pilot' ? '<span class="tag test">파일럿</span>' : (r.test || r.debug) ? '<span class="tag test">시험</span>' : '<span class="tag">참가자</span>';
       const prog = r.finished ? '<span class="tag done">완료</span>' : `연습 ${r.practice_done ? '✓' : '–'} · 글 ${r.trials_done}/3`;
       const files = STATIC ? '<span class="hint">zip 안에 JSON·CSV·Word</span>'
         : r.files.map((f) => `<a href="/api/file?pid=${r.pid}&name=${encodeURIComponent(f)}" ${f.endsWith('.json') ? 'target="_blank"' : ''}>${esc(f)}</a>`).join('');

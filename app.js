@@ -5,10 +5,13 @@
 // 저장 방식은 두 가지다: 서버 모드(python experiment/server.py, data/ 폴더에 저장)와
 // 서버 없는 모드(config.mode = 'static', GitHub Pages): 브라우저 저장 + 실험 끝 zip 다운로드 + Trial마다 Google 드라이브 전송(static_store.js).
 // P99는 연구자 체험용 번호다(배정은 P01과 같고, 기록에 test 표시가 남는다).
+// P90–P98은 파일럿용 번호다. 배정은 P01–P09를 빌려 쓰고(P90 = P01 … P98 = P09), 기록에 test: 'pilot'이 남는다.
 'use strict';
 
 const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 const TEST_PID = 'P99';
+const isPilot = (pid) => /^P9[0-8]$/.test(pid);
+const borrowFrom = (pid) => isPilot(pid) ? 'P0' + (+pid.slice(1) - 89) : 'P01';  // 배정표에 없는 번호가 빌려 쓸 배정
 const T0 = performance.now();
 const app = document.getElementById('app');
 const S = { cfg: null, stim: null, cb: null, prac: null, qs: null, pid: null, data: null, lastSaveOk: null };
@@ -141,8 +144,8 @@ async function idScreen() {
     await waitClick(go);
     const pid = input.value.trim().toUpperCase();
     if (!/^P\d{2}$/.test(pid)) { err.textContent = 'P와 두 자리 숫자로 입력하세요. (예: P01)'; continue; }
-    if (!S.cb[pid] && pid !== TEST_PID && !DEBUG) { err.textContent = `${pid}는 배정표(P01–P${String(n).padStart(2, '0')})에 없습니다. 연구자 체험은 ${TEST_PID}입니다.`; continue; }
-    const assign = S.cb[pid] || S.cb.P01;
+    if (!S.cb[pid] && pid !== TEST_PID && !isPilot(pid) && !DEBUG) { err.textContent = `${pid}는 배정표(P01–P${String(n).padStart(2, '0')})에 없습니다. 파일럿은 P90–P98, 연구자 체험은 ${TEST_PID}입니다.`; continue; }
+    const assign = S.cb[pid] || S.cb[borrowFrom(pid)];
     // 이 참가자에게 쓸 영상 파일이 서버에 있는지 확인
     const vids = [S.cfg.practice.video, ...[...new Set(assign.trials.map((t) => t.video))].map((v) => S.cfg.videos[v])];
     const missing = [];
@@ -188,7 +191,7 @@ async function menuScreen() {
   const next = nextSpec(), nDone = doneTrials().length, nAborted = (S.data.aborted || []).length;
   const practiced = (S.data.practice_runs || []).some((r) => r.end) || !!S.data.practice?.end;
   const p = panel(`<div class="menu">
-    <div class="menu-head"><h1>실험 메뉴</h1><span>참가자: <b>${S.pid}</b>${S.pid === TEST_PID ? ' (연구자 체험)' : ''}</span></div>
+    <div class="menu-head"><h1>실험 메뉴</h1><span>참가자: <b>${S.pid}</b>${S.pid === TEST_PID ? ' (연구자 체험)' : isPilot(S.pid) ? ` (파일럿 · ${borrowFrom(S.pid)} 배정)` : ''}</span></div>
     <button type="button" class="btn-practice" id="practice">Practice 시작</button>
     <hr>
     ${next ? `<div class="menu-label">다음 진행</div>
@@ -652,8 +655,8 @@ async function main() {
   } else {
     S.data = {
       meta: { pid, session_id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random(),
-              test: pid === TEST_PID ? 'researcher' : (S.cb[pid] ? null : 'debug'),
-              sequence: assign.sequence, assignment: assign.trials, assignment_from: S.cb[pid] ? pid : 'P01',
+              test: pid === TEST_PID ? 'researcher' : isPilot(pid) ? 'pilot' : (S.cb[pid] ? null : 'debug'),
+              sequence: assign.sequence, assignment: assign.trials, assignment_from: S.cb[pid] ? pid : borrowFrom(pid),
               debug: DEBUG, missing_videos: missing, started: stamp(), finished: null, duration_ms: null, stage: 'start', saved_at: null,
               user_agent: navigator.userAgent, screen: { w: screen.width, h: screen.height, dpr: devicePixelRatio },
               viewport: { w: innerWidth, h: innerHeight }, stimuli_sha: S.stimSha, stimuli_sources: S.stim.sources,
