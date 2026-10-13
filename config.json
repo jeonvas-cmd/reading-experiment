@@ -1,6 +1,8 @@
 {
  "_설명": "GitHub Pages(서버 없는 모드)용으로 build_pages.py가 만든 설정. 영상은 국가유산채널 원본 주소에서 재생하고, 기록은 브라우저 저장 + 실험 끝 zip 다운로드 + (설정 시) Google 드라이브 전송.",
  "cue_min_sec": 15,
+ "tf_quiz": false,
+ "_tf_quiz": "퀴즈 2(T/F)를 낼지. false면 퀴즈 1(자유 회상) 뒤 바로 설문으로 간다.",
  "video_error_wait_sec": 540,
  "word_browser_download": false,
  "bundle_download_at_end": true,

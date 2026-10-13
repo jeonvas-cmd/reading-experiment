@@ -1,6 +1,6 @@
 // 실험 흐름: 참가자 번호 → (기록이 있으면 이어서 하기/처음부터) → 실험 메뉴 ⇄ 연습·본 Trial → 실험 종료(기록 묶음을 다운로드 폴더에도 내려받음).
 // 안내(OT)는 처음 연습이나 Trial을 시작할 때 한 번 보인다.
-// Trial: 읽기(중단 전, 한 문장씩) → 중단 영상(영상이 끝나면 넘어감) → cue(MDDS·상황 모델만) → 퀴즈 1(자유 회상) → 퀴즈 2(T/F 한 문제씩) → 설문(7점 한 문항씩) → Word 파일(서버).
+// Trial: 읽기(중단 전, 한 문장씩) → 중단 영상(영상이 끝나면 넘어감) → cue(MDDS·상황 모델만) → 퀴즈 1(자유 회상) → [퀴즈 2(T/F 한 문제씩): config tf_quiz가 true일 때만, 지금은 꺼짐] → 설문(5점 한 문항씩, questions.json survey_points) → Word 파일(서버).
 // 모든 기록은 S.data 하나에 쌓이고, 단계마다 자동 저장된다.
 // 저장 방식은 두 가지다: 서버 모드(python experiment/server.py, data/ 폴더에 저장)와
 // 서버 없는 모드(config.mode = 'static', GitHub Pages): 브라우저 저장 + 실험 끝 zip 다운로드 + Trial마다 Google 드라이브 전송(static_store.js).
@@ -85,7 +85,7 @@ async function sha12(text) {
 function panel(html) { app.innerHTML = `<section class="panel">${html}</section>`; return app.querySelector('.panel'); }
 
 // ---------- 실험자 단축키 (참가자에게는 안내하지 않음) ----------
-// Ctrl+Shift+← : 바로 앞 화면으로. 퀴즈 2 문항 → 이전 문항, 퀴즈 2 첫 화면 → 퀴즈 1, 퀴즈 1 → cue, 설문 문항 → 이전 문항, 설문 첫 문항 → 퀴즈 2 마지막 문항.
+// Ctrl+Shift+← : 바로 앞 화면으로. 퀴즈 2 문항 → 이전 문항, 퀴즈 2 첫 화면 → 퀴즈 1, 퀴즈 1 → cue, 설문 문항 → 이전 문항, 설문 첫 문항 → 퀴즈 2 마지막 문항(퀴즈 2가 꺼져 있으면 퀴즈 1).
 //                읽기·영상·cue로는(그 앞으로는) 돌아가지 않는다(데이터가 오염되므로). 다시 받은 응답의 이전 값은 지우지 않고 redo에 보관한다.
 // Ctrl+Shift+→ : 지금 화면 건너뛰기. 안내 화면, 읽기의 남은 문장, 영상, cue, 퀴즈 1, 퀴즈 2·설문 문항. 건너뛴 사실은 기록(skipped)에 남는다.
 // 화면마다 CTL.handler(dir)를 등록하고, 처리했으면 true를 돌려준다.
@@ -447,26 +447,28 @@ async function tfQuiz(rec, items, seedStr, startAt = null) {
   return T;
 }
 
-// ---------- 7. 주관 설문 (7점, 한 문항씩) ----------
+// ---------- 7. 주관 설문 (survey_points점, 한 문항씩) ----------
+// 하위척도(subscale)·역채점(reverse)은 화면에 보이지 않고 기록에만 넣는다(집계용).
 // 반환: 'back'(첫 문항에서 뒤로 → 퀴즈 2 마지막 문항으로) 또는 기록.
 async function surveyScreens(rec) {
   const showCue = rec.cue_condition !== 'none';
   const items = S.qs.survey.filter((q) => !q.cueOnly || showCue);
   if (rec.survey) (rec.survey_history ||= []).push(rec.survey);
-  const V = { start: stamp(), end: null, duration_ms: null, items: [], redo: [] };
+  const N = S.qs.survey_points || 7, pts = Array.from({ length: N }, (_, i) => i + 1);
+  const V = { start: stamp(), end: null, duration_ms: null, points: N, items: [], redo: [] };
   rec.survey = V;
   let k = 0;
   while (k < items.length) {
     const q = items[k];
     const p = panel(`<div class="survey-card"><div class="survey-label">${esc(S.qs.survey_label)}</div>
       <h2>${esc(q.q)}</h2><p class="hint">${esc(S.qs.survey_hint)}</p>
-      <div class="survey-anchors"><span><b>1</b> · ${esc(q.lo)}</span><span><b>7</b> · ${esc(q.hi)}</span></div>
-      <div class="survey-scale">${[1, 2, 3, 4, 5, 6, 7].map((v) => `<button type="button" data-v="${v}">${v}</button>`).join('')}</div></div>`);
+      <div class="survey-anchors"><span><b>1</b> · ${esc(q.lo)}</span><span><b>${N}</b> · ${esc(q.hi)}</span></div>
+      <div class="survey-scale" style="grid-template-columns: repeat(${N}, 1fr)">${pts.map((v) => `<button type="button" data-v="${v}">${v}</button>`).join('')}</div></div>`);
     await nextFrame();
     const shown = stamp();
     const { value, input, at, nav } = await new Promise((resolve) => {
       const fin = (o) => { removeEventListener('keydown', onKey); CTL.handler = null; resolve({ at: stamp(), ...o }); };
-      const onKey = (e) => { if (e.repeat) return; const m = e.code.match(/^(?:Digit|Numpad)([1-7])$/); if (m) fin({ value: +m[1], input: 'key' }); };
+      const onKey = (e) => { if (e.repeat) return; const m = e.code.match(/^(?:Digit|Numpad)([1-9])$/); if (m && +m[1] <= N) fin({ value: +m[1], input: 'key' }); };
       addEventListener('keydown', onKey);
       p.querySelectorAll('.survey-scale button').forEach((b) => { b.onclick = () => fin({ value: +b.dataset.v, input: 'click' }); });
       CTL.handler = (dir) => { fin({ nav: dir }); return true; };
@@ -476,10 +478,10 @@ async function surveyScreens(rec) {
       k--; if (V.items[k]) V.redo.push(V.items[k]); V.items[k] = undefined; continue;
     }
     if (V.items[k]) V.redo.push(V.items[k]);
-    if (nav === 'skip') V.items[k] = { id: q.id, question: q.q, lo: q.lo, hi: q.hi, value: null, shown_t: shown.t, response_t: null, rt_ms: null, input: 'experimenter_skip', skipped: true };
+    if (nav === 'skip') V.items[k] = { id: q.id, question: q.q, subscale: q.subscale ?? null, reverse: !!q.reverse, points: N, lo: q.lo, hi: q.hi, value: null, shown_t: shown.t, response_t: null, rt_ms: null, input: 'experimenter_skip', skipped: true };
     else {
       p.querySelector(`.survey-scale button[data-v="${value}"]`).classList.add('pressed');
-      V.items[k] = { id: q.id, question: q.q, lo: q.lo, hi: q.hi, value, shown_t: shown.t, response_t: at.t, rt_ms: dur(shown, at), input };
+      V.items[k] = { id: q.id, question: q.q, subscale: q.subscale ?? null, reverse: !!q.reverse, points: N, lo: q.lo, hi: q.hi, value, shown_t: shown.t, response_t: at.t, rt_ms: dur(shown, at), input };
     }
     save(`survey_${q.id}`);
     await sleep(300);
@@ -497,13 +499,14 @@ function wordPayload(rec) {
     sections: [
       { name: '시간 기록', items: [
         ['Trial 전체', rec.times?.trial_ms], ['글 읽기', rec.times?.reading_ms], ['중단 영상', rec.times?.video_ms], ['cue 읽기', rec.times?.cue_ms],
-        ['퀴즈 1 작성', rec.times?.recall_ms], ['퀴즈 2 응답 시간 합 (문항 사이 간격 제외)', rec.times?.tf_rt_total_ms],
-        ['퀴즈 2 문항 평균 응답 시간', rec.times?.tf_rt_mean_ms], ['퀴즈 2 화면 전체 (안내 뒤부터)', rec.times?.tf_screen_ms], ['설문', rec.times?.survey_ms],
+        ['퀴즈 작성', rec.times?.recall_ms],
+        ...(rec.tf ? [['퀴즈 2 응답 시간 합 (문항 사이 간격 제외)', rec.times?.tf_rt_total_ms],
+          ['퀴즈 2 문항 평균 응답 시간', rec.times?.tf_rt_mean_ms], ['퀴즈 2 화면 전체 (안내 뒤부터)', rec.times?.tf_screen_ms]] : []), ['설문', rec.times?.survey_ms],
       ].map(([k, v]) => ({ question: k, answer: v == null ? '해당 없음' : fmtMs(v) })) },
       { name: `${S.qs.recall.title} (자유 회상)`, items: [{ question: '이야기 내용 재구성', answer: rec.recall?.answer || '' }] },
-      { name: `${S.qs.tf.title} (T/F)`, items: (rec.tf?.items || []).filter(Boolean).map((x) => ({ question: x.statement,
-          answer: x.skipped ? `건너뜀 (실험자) · 정답 ${x.answer_key}` : `응답 ${x.response} · 정답 ${x.answer_key} · ${x.correct ? '맞음' : '틀림'} · 응답 시간 ${(x.rt_ms / 1000).toFixed(2)}초 (${Math.round(x.rt_ms)} ms)` })) },
-      { name: '설문 (7점)', items: (rec.survey?.items || []).filter(Boolean).map((x) => ({ question: x.question, answer: x.skipped ? '건너뜀 (실험자)' : `${x.value} / 7  (1 = ${x.lo}, 7 = ${x.hi})` })) },
+      ...(rec.tf ? [{ name: `${S.qs.tf.title} (T/F)`, items: (rec.tf.items || []).filter(Boolean).map((x) => ({ question: x.statement,
+          answer: x.skipped ? `건너뜀 (실험자) · 정답 ${x.answer_key}` : `응답 ${x.response} · 정답 ${x.answer_key} · ${x.correct ? '맞음' : '틀림'} · 응답 시간 ${(x.rt_ms / 1000).toFixed(2)}초 (${Math.round(x.rt_ms)} ms)` })) }] : []),
+      { name: `설문 (${rec.survey?.points || 7}점)`, items: (rec.survey?.items || []).filter(Boolean).map((x) => { const n = x.points || 7; return { question: x.question, answer: x.skipped ? '건너뜀 (실험자)' : `${x.value} / ${n}  (1 = ${x.lo}, ${n} = ${x.hi})` }; }) },
     ] };
 }
 // 자유 회상 채점용 Word: 내용은 회상 답변만(제목·정보·cue 조건 없음, 눈가림 채점). 참가자·Trial·글은 파일 이름에 있다.
@@ -588,13 +591,15 @@ async function runTrial(spec) {
   const hasCue = spec.cue !== 'none';
   const tfItems = practice ? S.qs.tf_practice : mat.quiz.filter((q) => q.section === '중단 전');
   if (!hasCue) rec.cue = null;
+  const useTf = S.cfg.tf_quiz === true;  // 퀴즈 2(T/F)는 config.json의 tf_quiz로 켠다(지금은 꺼짐: 퀴즈 1 → 설문)
   let step = hasCue ? 'cue' : 'recall', tfStart = null;
   for (;;) {
     if (step === 'cue') { await cueScreen(rec, practice ? mat.cue : mat.cue[spec.cue], cueMin); step = 'recall'; }
-    else if (step === 'recall') { step = (await recallScreen(rec, hasCue)) === 'back' ? 'cue' : 'tf'; tfStart = null; }
+    else if (step === 'recall') { step = (await recallScreen(rec, hasCue)) === 'back' ? 'cue' : (useTf ? 'tf' : 'survey'); tfStart = null; }
     else if (step === 'tf') { step = (await tfQuiz(rec, tfItems, `${S.pid}|${spec.text}`, tfStart)) === 'back' ? 'recall' : 'survey'; }
     else if (step === 'survey') {
       if ((await surveyScreens(rec)) !== 'back') break;
+      if (!useTf) { step = 'recall'; continue; }  // 설문 첫 문항에서 뒤로 → 퀴즈 1
       step = 'tf'; tfStart = rec.tf.order.length - 1;  // 설문 첫 문항에서 뒤로 → 퀴즈 2 마지막 문항
     }
   }
@@ -637,7 +642,7 @@ async function main() {
     S.data = existing;
     S.data.aborted ||= [];
     const unfinished = S.data.trials.filter((t) => !t.end);
-    const phaseOf = (t) => t.survey ? '설문' : t.tf ? '퀴즈 2' : t.recall ? '퀴즈 1' : t.cue ? 'cue' : t.interruption ? '영상' : t.reading_pre ? '읽기' : '시작 화면';
+    const phaseOf = (t) => t.survey ? '설문' : t.tf ? '퀴즈 2' : t.recall ? '퀴즈' : t.cue ? 'cue' : t.interruption ? '영상' : t.reading_pre ? '읽기' : '시작 화면';
     for (const t of unfinished) S.data.aborted.push({ ...t, aborted_phase: phaseOf(t), aborted_saved_at: S.data.meta.saved_at });
     S.data.trials = S.data.trials.filter((t) => t.end);
     (S.data.meta.resumes ||= []).push({ iso: new Date().toISOString(), moved_to_aborted: unfinished.map((t) => t.trial),

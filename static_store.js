@@ -88,7 +88,12 @@ const STATIC_STORE = (() => {
         response: it.response, answer_key: it.answer_key, correct: it.correct == null ? null : (it.correct ? 1 : 0), rt_ms: it.rt_ms, input: it.input,
         extra: `${it.level || ''} / cue 범주: ${it.cue_category || ''}` }));
       Vitems.forEach((it, i) => responses.push(resp({ task: '설문', position: i + 1, item_id: it.id, question: it.question, response: it.value,
-        rt_ms: it.rt_ms, input: it.input, extra: `1 = ${it.lo}, 7 = ${it.hi}` })));
+        rt_ms: it.rt_ms, input: it.input, subscale: it.subscale ?? null, reverse: it.reverse ? 1 : 0, extra: `1 = ${it.lo}, ${it.points || 7} = ${it.hi}` })));
+      const subMeans = (items) => {  // 하위척도 평균: 역채점 문항은 (점수 수 + 1 − 응답)으로 바꿔 평균, 건너뛴 문항은 뺀다
+        const g = {};
+        for (const x of items) if (x.subscale && x.value != null) (g[x.subscale] ||= []).push(x.reverse ? (x.points || 7) + 1 - x.value : x.value);
+        return Object.fromEntries(Object.entries(g).map(([k, v]) => [`sub_${k}`, Math.round(v.reduce((a, b) => a + b, 0) / v.length * 1000) / 1000]));
+      };
       const chars = sents.reduce((n, s) => n + s.chars, 0), V = Object.fromEntries(Vitems.map((v) => [v.id, v.value]));
       trials.push({ ...key, complete: !!tr.end, trial_ms: tr.duration_ms, reading_pre_ms: R.duration_ms, reading_pre_n: sents.length, reading_pre_chars: chars,
         reading_pre_ms_per_char: chars ? Math.round(sents.reduce((n, s) => n + s.rt_ms, 0) / chars * 100) / 100 : null,
@@ -98,7 +103,7 @@ const STATIC_STORE = (() => {
         recall_ms: Rc ? Rc.duration_ms : null, recall_chars: Rc ? Rc.chars : null,
         tf_ms: T.duration_ms, tf_rt_total_ms: T.rt_total_ms, tf_rt_mean_ms: T.rt_mean_ms, tf_n: (T.items || []).filter(Boolean).length, tf_correct: T.n_correct, tf_skipped: T.n_skipped ?? 0,
         survey_ms: (tr.survey || {}).duration_ms, word_file: tr.word_file, started_iso: tr.start?.iso, ended_iso: tr.end?.iso,
-        s1: V.s1 ?? null, s2: V.s2 ?? null, s3: V.s3 ?? null, s4: V.s4 ?? null, s5: V.s5 ?? null });
+        ...V, ...subMeans(Vitems) });
     }
     return { responses, trials };
   }
